@@ -24,5 +24,8 @@ allprojects {
         if (providers.gradleProperty('vssVoxyJar').isPresent()) {
             systemProperty 'vss.voxyJar', providers.gradleProperty('vssVoxyJar').get()
         }
+        if (providers.gradleProperty('vssLostCitiesJar').isPresent()) {
+            systemProperty 'vss.lostCitiesJar', providers.gradleProperty('vssLostCitiesJar').get()
+        }
     }
 }

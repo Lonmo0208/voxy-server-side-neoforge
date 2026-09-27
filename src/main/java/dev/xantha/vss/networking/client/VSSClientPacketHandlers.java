@@ -10,6 +10,7 @@ import dev.xantha.vss.networking.payloads.SessionConfigS2CPayload;
 import dev.xantha.vss.networking.payloads.VoxelColumnS2CPayload;
 import dev.xantha.vss.networking.payloads.WorldgenProfileS2CPayload;
 import dev.xantha.vss.networking.payloads.WorldgenProfileFragmentS2CPayload;
+import dev.xantha.vss.networking.payloads.LostCityHintsS2CPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.server.IntegratedServer;
@@ -81,6 +82,10 @@ public final class VSSClientPacketHandlers {
         runOnClientThread(() -> VSSClientNetworking.handleWorldgenFragment(payload));
     }
 
+    public static void handleLostCityHints(LostCityHintsS2CPayload payload) {
+        runOnClientThread(() -> dev.xantha.vss.client.prediction.ClientPredictionState.onLostCityHints(payload));
+    }
+
     private static void handleDirectPayload(CustomPacketPayload payload) {
         if (payload instanceof SessionConfigS2CPayload sessionConfig) {
             VSSClientNetworking.handleSessionConfig(sessionConfig);
@@ -98,6 +103,8 @@ public final class VSSClientPacketHandlers {
             VSSClientNetworking.handleWorldgenProfile(worldgenProfile);
         } else if (payload instanceof WorldgenProfileFragmentS2CPayload fragment) {
             VSSClientNetworking.handleWorldgenFragment(fragment);
+        } else if (payload instanceof LostCityHintsS2CPayload hints) {
+            dev.xantha.vss.client.prediction.ClientPredictionState.onLostCityHints(hints);
         }
     }
 

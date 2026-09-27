@@ -7,6 +7,7 @@ import net.minecraft.world.phys.Vec3;
 final class PredictionFramePlan<T> {
     private Object view, level, snapshot;
     private long frame, generation;
+    private long residencyRevision;
     private int viewportFrame, width, height;
     private Matrix4f modelView, projection;
     private Vec3 camera;
@@ -21,10 +22,33 @@ final class PredictionFramePlan<T> {
                 && matrices.projection().equals(projection) ? value : null;
     }
 
+    /** Reuse an ordinary pass across frames when the immutable scene is stable. */
+    T getStable(Object view, Object level, Object snapshot, long generation,
+                long residencyRevision, int width, int height, PredictionRenderer.Frame matrices) {
+        return this.view == view && this.level == level && this.snapshot == snapshot
+                && this.generation == generation && this.residencyRevision == residencyRevision
+                && this.width == width && this.height == height
+                && matrices.camera().equals(camera) && matrices.modelView().equals(modelView)
+                && matrices.projection().equals(projection) ? value : null;
+    }
+
+    /** Compatibility overload for callers that do not own a GPU residency journal. */
+    T getStable(Object view, Object level, Object snapshot, long generation,
+                int width, int height, PredictionRenderer.Frame matrices) {
+        return getStable(view, level, snapshot, generation, 0L, width, height, matrices);
+    }
+
     void put(Object view, Object level, Object snapshot, long frame, long generation,
              int viewportFrame, int width, int height, PredictionRenderer.Frame matrices, T value) {
+        put(view, level, snapshot, frame, generation, viewportFrame, 0L, width, height, matrices, value);
+    }
+
+    void put(Object view, Object level, Object snapshot, long frame, long generation,
+             int viewportFrame, long residencyRevision, int width, int height,
+             PredictionRenderer.Frame matrices, T value) {
         this.view = view; this.level = level; this.snapshot = snapshot;
         this.frame = frame; this.generation = generation; this.viewportFrame = viewportFrame;
+        this.residencyRevision = residencyRevision;
         this.width = width; this.height = height;
         this.modelView = new Matrix4f(matrices.modelView());
         this.projection = new Matrix4f(matrices.projection());

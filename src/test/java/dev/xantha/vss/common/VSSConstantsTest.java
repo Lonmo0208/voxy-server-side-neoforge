@@ -8,8 +8,8 @@ import org.junit.jupiter.api.Test;
 class VSSConstantsTest {
 
     @Test
-    void protocolVersionIncludesWorldgenProfileFragments() {
-        assertEquals(47, VSSConstants.PROTOCOL_VERSION);
+    void protocolVersionIncludesLostCitiesHints() {
+        assertEquals(48, VSSConstants.PROTOCOL_VERSION);
     }
 
     @Test

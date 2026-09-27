@@ -26,6 +26,9 @@ final class PredictionRenderResidency {
     private RenderSnapshot pendingSource;
     private final java.util.ArrayList<PredictionTile> pendingUploads = new java.util.ArrayList<>();
 
+    /** Changes whenever a tile becomes drawable or is retired from the GPU set. */
+    long revision() { return revision; }
+
     void retain(RenderSnapshot source) {
         if (source == retainedSource && revision == retainedRevision) return;
         boolean distanceReduced = layout != null && source.layout().maxDistanceBlocks() < layout.maxDistanceBlocks();
@@ -77,6 +80,19 @@ final class PredictionRenderResidency {
     }
 
     boolean contains(PredictionTile tile) { return tiles.get(tile.key()) == tile; }
+
+    /**
+     * Returns whether a pending upload that matters to the current view is
+     * still waiting. The renderer uses this before reusing a stable frame
+     * plan; uploads outside the horizon do not invalidate that plan.
+     */
+    boolean hasPendingUploads(RenderSnapshot source,
+                              java.util.function.Predicate<PredictionTile> relevant) {
+        for (PredictionTile tile : pendingUploads(source)) {
+            if (relevant.test(tile)) return true;
+        }
+        return false;
+    }
 
     java.util.List<PredictionTile> pendingUploads(RenderSnapshot source) {
         if (source != pendingSource) {

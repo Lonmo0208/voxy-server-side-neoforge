@@ -106,6 +106,50 @@ class PredictionRegionStorageTest {
         }
     }
 
+    @Test void largeMeshRegionIsDiscoveredAndCompactedAfterReopen() throws Exception {
+        var key = PredictionDiskCache.Key.mesh(PredictionDiskCache.Key.terrain(0, 0, 2));
+        byte[] bytes = payload(31, 9 * 1024 * 1024);
+        Path region;
+        long before;
+        try (var store = new PredictionRegionStorage(root)) {
+            for (int i = 0; i < 3; i++) write(store, key, bytes);
+            region = store.path(key);
+            before = Files.size(region);
+            assertTrue(store.hasMaintenance());
+        }
+        try (var store = new PredictionRegionStorage(root)) {
+            store.discoverMaintenance();
+            assertTrue(store.hasMaintenance());
+            store.compactOne();
+            assertTrue(Files.size(region) < before / 2);
+            assertArrayEquals(bytes, store.read(key).bytes());
+            assertFalse(store.hasMaintenance());
+        }
+    }
+
+    @Test void compactionWaitsUntilWasteJustifiesRewritingLiveMeshRecords() throws Exception {
+        var a = PredictionDiskCache.Key.mesh(PredictionDiskCache.Key.terrain(0, 0, 2));
+        var b = PredictionDiskCache.Key.mesh(PredictionDiskCache.Key.terrain(1, 0, 2));
+        var changed = PredictionDiskCache.Key.mesh(PredictionDiskCache.Key.terrain(2, 0, 2));
+        byte[] large = payload(41, 8 * 1024 * 1024);
+        byte[] small = payload(42, 4 * 1024 * 1024);
+        try (var store = new PredictionRegionStorage(root)) {
+            write(store, a, large);
+            write(store, b, large);
+            write(store, changed, small);
+            write(store, changed, small);
+            assertFalse(store.hasMaintenance());
+            write(store, changed, small);
+            assertTrue(store.hasMaintenance());
+            long before = Files.size(store.path(a));
+            store.compactOne();
+            assertEquals(before - 2L * small.length, Files.size(store.path(a)));
+            assertArrayEquals(large, store.read(a).bytes());
+            assertArrayEquals(large, store.read(b).bytes());
+            assertArrayEquals(small, store.read(changed).bytes());
+        }
+    }
+
     @Test void concurrentReadersNeverObservePartialReplacement() throws Exception {
         var key = PredictionDiskCache.Key.surface(0,0,3);
         byte[] a=payload(7,4096), b=payload(8,4096);

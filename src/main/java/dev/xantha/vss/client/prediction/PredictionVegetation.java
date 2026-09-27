@@ -475,6 +475,7 @@ final class PredictionVegetation {
         var random = new WorldgenRandom(new XoroshiroRandomSource(0));
         BlockPos origin = new BlockPos(chunkX * 16, terrain.profile().minY(), chunkZ * 16);
         long seed = random.setDecorationSeed(terrain.profile().seed(), origin.getX(), origin.getZ());
+        Map<Boolean, List<net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome>>> columnBiomes = null;
         // Native and Java placements share complete cave columns and ordered edits.
         try (var nativeStage = terrain instanceof RustTerrainSampler rust
                 ? new RustVegetationStage(rust, level, chunkX, chunkZ, treeModels != null) : null) {
@@ -495,7 +496,8 @@ final class PredictionVegetation {
                     if (feature.placement().stream().noneMatch(
                             modifier -> modifier instanceof net.minecraft.world.level.levelgen.placement.BiomeFilter)) {
                         // Unfiltered modded features must still belong to a local biome.
-                        if (!belongsToColumn(level, feature, origin)) continue;
+                        if (columnBiomes == null) columnBiomes = new HashMap<>();
+                        if (!belongsToColumn(level, feature, origin, columnBiomes)) continue;
                     }
                     if (!reusableTree && nativeStage != null && nativeStage.place(index)) continue;
                     if (nativeStage != null) nativeStage.beforeJava();
@@ -536,18 +538,30 @@ final class PredictionVegetation {
     }
 
     private boolean belongsToColumn(PredictionDecorationLevel level, PlacedFeature feature, BlockPos origin) {
-        var column = level.column(origin.getX(), origin.getZ());
-        if (column.volume() != null) {
-            var volume = column.volume();
-            for (int i = 0; i < volume.size(); i++) {
-                int y = volume.top(i);
-                if (!volume.occupied(y, false) && context.generatorContext().getBiomeGenerationSettings(
-                        level.getBiome(new BlockPos(origin.getX(), y, origin.getZ()))).hasFeature(feature)) return true;
+        return belongsToColumn(level, feature, origin, new HashMap<>());
+    }
+
+    boolean belongsToColumn(PredictionDecorationLevel level, PlacedFeature feature, BlockPos origin,
+            Map<Boolean, List<net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome>>> columnBiomes) {
+        var biomes = columnBiomes.computeIfAbsent(level.usesDisplayTerrain(), ignored -> {
+            var column = level.column(origin.getX(), origin.getZ());
+            var found = new java.util.LinkedHashSet<net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome>>();
+            if (column.volume() != null) {
+                var volume = column.volume();
+                for (int i = 0; i < volume.size(); i++) {
+                    int y = volume.top(i);
+                    if (!volume.occupied(y, false))
+                        found.add(level.getBiome(new BlockPos(origin.getX(), y, origin.getZ())));
+                }
+            } else {
+                found.add(level.getBiome(new BlockPos(origin.getX(), column.surfaceY(), origin.getZ())));
             }
-            return false;
+            return List.copyOf(found);
+        });
+        for (var biome : biomes) {
+            if (context.generatorContext().getBiomeGenerationSettings(biome).hasFeature(feature)) return true;
         }
-        return context.generatorContext().getBiomeGenerationSettings(
-                level.getBiome(new BlockPos(origin.getX(), column.surfaceY(), origin.getZ()))).hasFeature(feature);
+        return false;
     }
 
     static boolean surfaceFeature(int step, PlacedFeature feature, boolean nether, boolean trees, boolean structures) {

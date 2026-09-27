@@ -16,6 +16,8 @@ import dev.xantha.vss.networking.payloads.SessionConfigS2CPayload;
 import dev.xantha.vss.networking.payloads.VoxelColumnS2CPayload;
 import dev.xantha.vss.networking.payloads.WorldgenProfileS2CPayload;
 import dev.xantha.vss.networking.payloads.WorldgenProfileFragmentS2CPayload;
+import dev.xantha.vss.networking.payloads.LostCityHintsC2SPayload;
+import dev.xantha.vss.networking.payloads.LostCityHintsS2CPayload;
 import dev.xantha.vss.networking.server.VSSServerNetworking;
 import dev.xantha.vss.networking.server.ServerIdentityConfigurationTask;
 import java.lang.reflect.InvocationTargetException;
@@ -50,6 +52,8 @@ public final class VSSNetworking {
         registrar.playToServer(CancelRequestC2SPayload.TYPE, CancelRequestC2SPayload.STREAM_CODEC, VSSServerNetworking::handleCancel);
         registrar.playToServer(BandwidthUpdateC2SPayload.TYPE, BandwidthUpdateC2SPayload.STREAM_CODEC, VSSServerNetworking::handleBandwidthUpdate);
         registrar.playToServer(RegionPresenceC2SPayload.TYPE, RegionPresenceC2SPayload.STREAM_CODEC, VSSServerNetworking::handleRegionPresence);
+        registrar.playToServer(LostCityHintsC2SPayload.TYPE, LostCityHintsC2SPayload.STREAM_CODEC,
+                VSSServerNetworking::handleLostCityHints);
 
         registrar.playToClient(SessionConfigS2CPayload.TYPE, SessionConfigS2CPayload.STREAM_CODEC, VSSNetworking::handleSessionConfig);
         registrar.playToClient(BatchResponseS2CPayload.TYPE, BatchResponseS2CPayload.STREAM_CODEC, VSSNetworking::handleBatchResponse);
@@ -60,6 +64,8 @@ public final class VSSNetworking {
         registrar.playToClient(WorldgenProfileS2CPayload.TYPE, WorldgenProfileS2CPayload.STREAM_CODEC, VSSNetworking::handleWorldgenProfile);
         registrar.playToClient(WorldgenProfileFragmentS2CPayload.TYPE, WorldgenProfileFragmentS2CPayload.STREAM_CODEC,
                 VSSNetworking::handleWorldgenFragment);
+        registrar.playToClient(LostCityHintsS2CPayload.TYPE, LostCityHintsS2CPayload.STREAM_CODEC,
+                VSSNetworking::handleLostCityHints);
     }
 
     public static void registerConfigurationTasks(RegisterConfigurationTasksEvent event) {
@@ -123,6 +129,10 @@ public final class VSSNetworking {
 
     private static void handleWorldgenFragment(WorldgenProfileFragmentS2CPayload payload, IPayloadContext context) {
         invokeClientHandler("handleWorldgenFragment", new Class<?>[] {WorldgenProfileFragmentS2CPayload.class}, payload);
+    }
+
+    private static void handleLostCityHints(LostCityHintsS2CPayload payload, IPayloadContext context) {
+        invokeClientHandler("handleLostCityHints", new Class<?>[] {LostCityHintsS2CPayload.class}, payload);
     }
 
     private static void handleServerIdentity(ServerIdentityS2CPayload payload, IPayloadContext context) {

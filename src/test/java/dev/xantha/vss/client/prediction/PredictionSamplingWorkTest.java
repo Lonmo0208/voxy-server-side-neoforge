@@ -176,6 +176,33 @@ class PredictionSamplingWorkTest {
         assertEquals(70, override.sampleSurface(10, 20).surfaceY());
     }
 
+    @Test void decorationBlockQueryCacheInvalidatesAcrossFeatureRollback() {
+        var sampler = sampler(new FixedBiomeSource(lookup.lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS)), false);
+        var level = new PredictionDecorationLevel(sampler, sampler, RegistryAccess.EMPTY, -4, -4);
+        var position = new net.minecraft.core.BlockPos(-64, 64, -64);
+        var original = level.getBlockState(position);
+        // Prime the hit/miss cache, then write and roll back through the same
+        // transaction path used by feature placement.
+        assertSame(original, level.getBlockState(position));
+        level.beginFeature();
+        level.setBlock(position, net.minecraft.world.level.block.Blocks.DIAMOND_BLOCK.defaultBlockState(), 0, 0);
+        assertEquals(net.minecraft.world.level.block.Blocks.DIAMOND_BLOCK, level.getBlockState(position).getBlock());
+        level.endFeature(false);
+        assertEquals(original, level.getBlockState(position), "rollback must invalidate cached placed-block reads");
+    }
+
+    @Test void decorationColumnWindowKeepsNegativeCornersDistinct() {
+        var sampler = sampler(new FixedBiomeSource(lookup.lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.PLAINS)), false);
+        var level = new PredictionDecorationLevel(sampler, sampler, RegistryAccess.EMPTY, -4, -4);
+        var first = level.column(-96, -96);
+        var opposite = level.column(-17, -17);
+        assertSame(first, level.column(-96, -96));
+        assertSame(opposite, level.column(-17, -17));
+        assertNotSame(first, opposite, "opposite corners must not alias in the bounded cache");
+        assertThrows(UnsupportedOperationException.class, () -> level.column(-97, -96));
+        assertThrows(UnsupportedOperationException.class, () -> level.column(-17, -16));
+    }
+
     private static ClientTerrainSampler sampler(BiomeSource source, boolean surfaceRules) {
         var settings = lookup.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD);
         var generator = new NoiseBasedChunkGenerator(source, settings);

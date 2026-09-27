@@ -34,6 +34,8 @@ import dev.xantha.vss.networking.payloads.HandshakeC2SPayload;
 import dev.xantha.vss.networking.payloads.HandshakeRequestS2CPayload;
 import dev.xantha.vss.networking.payloads.RegionPresenceC2SPayload;
 import dev.xantha.vss.networking.payloads.VoxelColumnS2CPayload;
+import dev.xantha.vss.networking.payloads.LostCityHintsC2SPayload;
+import dev.xantha.vss.networking.server.compat.LostCityHintService;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import net.minecraft.network.chat.Component;
@@ -222,6 +224,11 @@ public final class VSSServerNetworking {
         BATCH_REQUEST_HANDLER.handle(player, payload);
     }
 
+    public static void handleLostCityHints(LostCityHintsC2SPayload payload, IPayloadContext context) {
+        if (context.player() instanceof ServerPlayer player && !isServerStopping())
+            LostCityHintService.handle(player, payload);
+    }
+
     public static void invalidateCachedColumn(ServerLevel level, int cx, int cz, long dirtyTimestamp) {
         if (isServerStopping()) {
             return;
@@ -359,6 +366,7 @@ public final class VSSServerNetworking {
     @SubscribeEvent
     public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
+            LostCityHintService.forgetPlayer(player.getUUID());
             SERVER_RUNTIME.onPlayerLogout(player);
         }
     }
@@ -384,6 +392,7 @@ public final class VSSServerNetworking {
 
     @SubscribeEvent
     public static void onServerStopping(ServerStoppingEvent event) {
+        LostCityHintService.stop();
         SERVER_RUNTIME.onServerStopping(event.getServer());
         WorldgenProfileHolder.clear();
     }
