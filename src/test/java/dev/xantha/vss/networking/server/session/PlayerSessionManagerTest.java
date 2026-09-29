@@ -23,6 +23,13 @@ class PlayerSessionManagerTest {
     }
 
     @Test
+    void legacyProtocolClientWithVoxelColumnsIsCompatible() {
+        assertTrue(PlayerSessionManager.isCompatibleClient(
+                VSSConstants.MIN_PROTOCOL_VERSION,
+                VSSConstants.CAPABILITY_VOXEL_COLUMNS));
+    }
+
+    @Test
     void mismatchedProtocolIsRejected() {
         assertFalse(PlayerSessionManager.isCompatibleClient(
                 VSSConstants.PROTOCOL_VERSION + 1,

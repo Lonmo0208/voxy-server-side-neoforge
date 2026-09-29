@@ -169,14 +169,14 @@ public final class PlayerSessionManager {
     }
 
     public static boolean isCompatibleClient(int clientProtocolVersion, int clientCapabilities) {
-        return clientProtocolVersion == VSSConstants.PROTOCOL_VERSION
+        return VSSConstants.isProtocolCompatible(clientProtocolVersion)
                 && (clientCapabilities & VSSConstants.CAPABILITY_VOXEL_COLUMNS) != 0;
     }
 
     private static void logIncompatibleClient(String name, int clientProtocolVersion, int clientCapabilities) {
-        if (clientProtocolVersion != VSSConstants.PROTOCOL_VERSION) {
+        if (!VSSConstants.isProtocolCompatible(clientProtocolVersion)) {
             VSSLogger.warn(name + " has incompatible VSS protocol " + clientProtocolVersion
-                    + " (server requires " + VSSConstants.PROTOCOL_VERSION + ")");
+                    + " (server accepts " + VSSConstants.MIN_PROTOCOL_VERSION + "-" + VSSConstants.PROTOCOL_VERSION + ")");
             return;
         }
         if ((clientCapabilities & VSSConstants.CAPABILITY_VOXEL_COLUMNS) == 0) {

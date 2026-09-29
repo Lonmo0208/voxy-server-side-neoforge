@@ -5,6 +5,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class VSSConstants {
     public static final String MOD_ID = "vss";
     public static final int PROTOCOL_VERSION = 48;
+    /** 允许接入的最低客户端协议版本；[MIN, PROTOCOL_VERSION] 区间内的客户端均可混连。 */
+    public static final int MIN_PROTOCOL_VERSION = 43;
 
     public static final int CAPABILITY_VOXEL_COLUMNS = 1;
     public static final int CAPABILITY_ZSTD_COLUMNS = 1 << 1;
@@ -41,6 +43,11 @@ public final class VSSConstants {
     }
 
     private static final AtomicLong LAST_COLUMN_VERSION = new AtomicLong();
+
+    public static boolean isProtocolCompatible(int protocolVersion) {
+        return protocolVersion >= MIN_PROTOCOL_VERSION
+                && protocolVersion <= PROTOCOL_VERSION;
+    }
 
     public static long epochMillis() {
         return System.currentTimeMillis();

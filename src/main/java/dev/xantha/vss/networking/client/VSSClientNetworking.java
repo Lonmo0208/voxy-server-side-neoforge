@@ -149,7 +149,8 @@ public final class VSSClientNetworking {
             discardSession();
             return;
         }
-        if (payload.protocolVersion() != VSSConstants.PROTOCOL_VERSION) {
+        // 服务端协议版本不低于最低兼容版本即可接入；新增能力通过 capabilities 位协商。
+        if (payload.protocolVersion() < VSSConstants.MIN_PROTOCOL_VERSION) {
             VSSLogger.warn("Server has incompatible VSS protocol " + payload.protocolVersion());
             discardSession();
             return;

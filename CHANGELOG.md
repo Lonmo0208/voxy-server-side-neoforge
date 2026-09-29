@@ -1,5 +1,11 @@
 # 更新日志
 
+## 未发布（合入旧 0.2.13 分支的服务端兼容改动）
+
+- **允许未安装 VSS 的客户端进服**：网络通道改为 `optional()` 注册并加 `displayTest="IGNORE_SERVER_VERSION"`；服务端在配置阶段、所有 S2C 发送路径（含 Northstar 火箭同步）前校验客户端是否具备对应通道，缺失时静默跳过，未装 VSS 的玩家可正常加入但不会收到 LOD 数据。
+- **协议版本范围兼容**：新增 `MIN_PROTOCOL_VERSION = 43` 与 `isProtocolCompatible()`，服务端接受 [43, 当前] 区间内的客户端协议，客户端接受不低于 43 的服务端协议；NeoForge 通道名固定为 `43`，不再随协议版本变化，新旧客户端可以混连。
+- 构建环境：`org.gradle.java.home` 指向本机 GraalVM JDK 21，Gradle wrapper 升至本机已缓存的 8.10（8.8 分发缓存不完整且下载受 TLS 干扰）。
+
 ## 0.3.4（简要更新）
 
 适用 Minecraft 1.21.1 / NeoForge。与 Forge 1.20.1 版本同步发布。

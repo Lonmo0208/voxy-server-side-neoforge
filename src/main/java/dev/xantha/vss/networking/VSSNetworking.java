@@ -1,6 +1,5 @@
 package dev.xantha.vss.networking;
 
-import dev.xantha.vss.common.VSSConstants;
 import dev.xantha.vss.common.VSSLogger;
 import dev.xantha.vss.networking.payloads.BandwidthUpdateC2SPayload;
 import dev.xantha.vss.networking.payloads.BatchChunkRequestC2SPayload;
@@ -33,14 +32,18 @@ import net.neoforged.neoforge.network.registration.HandlerThread;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 public final class VSSNetworking {
-    private static final String PROTOCOL = Integer.toString(VSSConstants.PROTOCOL_VERSION);
+    // 网络层协议通道名固定（不带版本号），确保新旧版本模组都能通过 NeoForge 的通道协商。
+    // 应用层版本兼容性由 PROTOCOL_VERSION 和握手逻辑单独处理。
+    private static final String PROTOCOL = "43";
     private static final String CLIENT_PACKET_HANDLERS_CLASS = "dev.xantha.vss.networking.client.VSSClientPacketHandlers";
 
     private VSSNetworking() {
     }
 
     public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar registrar = event.registrar(PROTOCOL).executesOn(HandlerThread.MAIN);
+        // optional() 使该网络通道在客户端缺失本模组时不参与通道协商，
+        // 否则服务端会以 "客户端缺少此服务端需要的网络通道" 拒绝未安装 VSS 的客户端。
+        PayloadRegistrar registrar = event.registrar(PROTOCOL).optional().executesOn(HandlerThread.MAIN);
 
         registrar.configurationToClient(
                 ServerIdentityS2CPayload.TYPE,
@@ -78,6 +81,11 @@ public final class VSSNetworking {
 
     public static void sendToPlayer(ServerPlayer player, CustomPacketPayload payload) {
         if (trySendToIntegratedHost(player, payload)) {
+            return;
+        }
+        // 客户端未安装 VSS 时不具备该网络通道，跳过发送，
+        // 否则服务端发送端会抛 "Payload ... may not be sent to the client!"。
+        if (!player.connection.hasChannel(payload.type().id())) {
             return;
         }
         if (payload instanceof WorldgenProfileS2CPayload profile) {

@@ -15,7 +15,11 @@ public record ServerIdentityConfigurationTask(
 
     @Override
     public void run(Consumer<CustomPacketPayload> sender) {
-        sender.accept(ServerIdentityS2CPayload.fromConfig());
+        // 客户端未安装 VSS 时不具备该网络通道，跳过发送，
+        // 否则服务端发送端会抛 "Payload vss:server_identity may not be sent to the client!"。
+        if (listener.hasChannel(ServerIdentityS2CPayload.TYPE.id())) {
+            sender.accept(ServerIdentityS2CPayload.fromConfig());
+        }
         listener.finishCurrentTask(TYPE);
     }
 

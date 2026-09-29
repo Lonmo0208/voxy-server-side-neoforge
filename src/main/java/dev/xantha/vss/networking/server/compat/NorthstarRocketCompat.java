@@ -317,7 +317,10 @@ public final class NorthstarRocketCompat {
     private static void sendNorthstarPacket(ServerPlayer viewer, Object packet, Reflection resolved)
             throws ReflectiveOperationException {
         if (packet instanceof net.minecraft.network.protocol.common.custom.CustomPacketPayload payload) {
-            PacketDistributor.sendToPlayer(viewer, payload);
+            // 只发给支持该通道的客户端，否则服务端发送端会抛 UnsupportedOperationException
+            if (viewer.connection.hasChannel(payload.type().id())) {
+                PacketDistributor.sendToPlayer(viewer, payload);
+            }
             return;
         }
         if (resolved.channelSendToPlayerMethod != null) {

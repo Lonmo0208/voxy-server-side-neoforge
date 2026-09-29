@@ -10,6 +10,9 @@ authors="${mod_authors}"
 credits="${mod_credits}"
 logoFile="icon.png"
 description='''${mod_description}'''
+# 服务端必须安装本模组；客户端缺失本模组时不会被服务器拒绝。
+# MATCH_VERSION（默认）会强制客户端也必须安装，因此这里使用 IGNORE_SERVER_VERSION。
+displayTest="IGNORE_SERVER_VERSION"
 
 [[dependencies.${mod_id}]]
     modId="neoforge"
