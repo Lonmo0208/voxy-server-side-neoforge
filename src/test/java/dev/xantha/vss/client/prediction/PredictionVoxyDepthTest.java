@@ -1,14 +1,29 @@
 package dev.xantha.vss.client.prediction;
 
 import static org.junit.jupiter.api.Assertions.*;
+import dev.xantha.vss.config.VSSClientConfig;
 import dev.xantha.vss.networking.client.VSSClientNetworking;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.BusBuilder;
 import net.neoforged.neoforge.client.event.RenderFrameEvent;
 import org.joml.Matrix4f;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 class PredictionVoxyDepthTest {
+    private static boolean previousPrediction;
+
+    /** Prediction is opt-in, so the depth bridge has to be switched on explicitly. */
+    @BeforeAll static void enablePrediction() {
+        previousPrediction = VSSClientConfig.CONFIG.enablePrediction;
+        VSSClientConfig.CONFIG.enablePrediction = true;
+    }
+
+    @AfterAll static void restorePrediction() {
+        VSSClientConfig.CONFIG.enablePrediction = previousPrediction;
+    }
+
     @Test void borrowedDepthRequiresTheSameTargetCameraAndFrame() {
         ClientTerrainSamplerTest.bootstrapMinecraft();
         var bus = BusBuilder.builder().build();

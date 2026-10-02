@@ -48,7 +48,7 @@ Voxy Server Side（VSS）让服务端负责读取、生成、缓存并发送 Vox
 
 ## VSS 远处预测
 
-客户端收到服务端同步的世界生成信息后，用世界种子在本地预测并渲染远景地形，不必等服务端把远处的 Voxy 列全部传输完成，地平线附近即可显示地形、植被和地表建筑。该功能默认开启，可用 `enablePrediction` 关闭。
+客户端收到服务端同步的世界生成信息后，用世界种子在本地预测并渲染远景地形，不必等服务端把远处的 Voxy 列全部传输完成，地平线附近即可显示地形、植被和地表建筑。该功能**默认关闭**（预测是对世界生成的近似，浮空岛等特殊地形可能看起来不对），需要时用 `enablePrediction` 开启；服务端也要同时打开 `enablePredictionSync` 才会发送世界生成档案。旧配置升级时会自动关闭一次。
 
 预测范围由 `predictionDistanceBlocks` 控制（默认 4096 方块），普通精细地形距离由 `predictionFineDistanceBlocks` 控制（默认 512 方块）。最外层 10% 不强制锁定粗 LOD，仍按屏幕像素误差及可用预算渐进细化。近处地形之外还会按 `predictionSurfaceDistanceBlocks`（默认 768 方块）细化地表内容，植被和建筑分别由 `predictionTrees`、`predictionStructures` 开关。地形采样按「原生 Rust → Java」的顺序选择后端：可用时使用随包的原生 Rust 世界生成核心，否则退回解码后的 Java 上下文；Rust 会处理受支持的生物群系、地表规则与装饰放置，未支持的装饰保留 Java 回退；建筑结构沿用 Minecraft 的 Java 布局与模板处理器，并与两种地形后端共享虚拟区块。预测结果默认缓存在本地（`rememberTerrain=true`），重进世界可恢复已有精度。
 
@@ -102,7 +102,7 @@ VSS 可在原版实体跟踪范围外显示简化的玩家和载具，并同步�
 | `desiredBandwidthKbps` | `0` | 不设个人下载上限，仍受全服总带宽限制 |
 | `offThreadSectionProcessing` | `true` | 在线程外解码和处理收到的列 |
 | `enableXaeroMapBridge` | `true` | 将服务端远景写入 Xaero 世界地图 |
-| `enablePrediction` | `true` | 使用 VSS 自己的种子驱动远处预测 |
+| `enablePrediction` | `false` | 使用 VSS 自己的种子驱动远处预测 |
 | `predictionDistanceBlocks` | `4096` | 独立预测远景范围，单位方块，独立于 VSS |
 | `predictionFineDistanceBlocks` | `512` | 普通精细地形距离，单位方块，独立于预测远景距离 |
 | `predictionSurfaceDistanceBlocks` | `768` | 实际近处地形外的地表细化宽度，范围 128–2048 方块 |
@@ -120,7 +120,7 @@ VSS 可在原版实体跟踪范围外显示简化的玩家和载具，并同步�
 
 `surface` 诊断包含地表候选/完成网格数、基础远景与近处地形是否就绪、实际生成块数、进入网格的块数，以及跳过的 feature/结构数。自动日志受 `debugLogging` 控制；也可通过 `/vssclient stats` 主动查询。Voxy/Sodium 设置页提供植被开关、地表建筑开关与地表内容范围。
 
-服务端的 `enablePredictionSync` 控制是否发送 `worldgen_profile`。客户端可用 `/vssclient stats` 查看 `profile`、`tiles`、`pending` 和当前 exact/预测会话状态；地形后端诊断会显示当前 Rust 算法标识或 Java。
+服务端的 `enablePredictionSync` 控制是否发送 `worldgen_profile`（默认关闭，也不随版本升级自动打开）。客户端可用 `/vssclient stats` 查看 `profile`、`tiles`、`pending` 和当前 exact/预测会话状态；地形后端诊断会显示当前 Rust 算法标识或 Java。
 
 ### FreeTerraForged 预测适配
 

@@ -7,7 +7,7 @@ import java.util.Map;
 
 public class VSSClientConfig extends JsonConfig {
     private static final String FILE_NAME = "vss-client-config.json";
-    public static final String CURRENT_CONFIG_VERSION = "v0.2.16";
+    public static final String CURRENT_CONFIG_VERSION = "v0.2.17";
     public static final int MAX_LOD_DISTANCE_CHUNKS = VSSConstants.MAX_CLIENT_LOD_DISTANCE_CHUNKS;
     public static final int MIN_PREDICTION_DISTANCE_BLOCKS = 1_024;
     public static final int MAX_PREDICTION_DISTANCE_BLOCKS = 65_536;
@@ -25,9 +25,13 @@ public class VSSClientConfig extends JsonConfig {
     public boolean enableXaeroMapBridge = true;
     /** Prediction resource preset: low, medium or high; medium by default. */
     public String performanceTier = "medium";
-    /** Generate deterministic far terrain predictions from the server worldgen profile. */
+    /**
+     * Generate deterministic far terrain predictions from the server worldgen
+     * profile. Off by default: prediction is an approximation, so it stays
+     * opt-in and an update never changes how the distance looks on its own.
+     */
     @SerializedName("enablePrediction")
-    public boolean enablePrediction = true;
+    public boolean enablePrediction = false;
     /** Prediction horizon, in blocks. */
     public int predictionDistanceBlocks = 4_096;
     public int predictionFineDistanceBlocks = 512;
@@ -75,7 +79,7 @@ public class VSSClientConfig extends JsonConfig {
         help.put("offThreadSectionProcessing", "是否在后台线程处理收到的 LOD 区块以减少主线程卡顿；默认 true。");
         help.put("enableXaeroMapBridge", "是否将服务端远景写入 Xaero 世界地图；默认 true。可用 /vssclient xaero disable 临时关闭。");
         help.put("performanceTier", "预测性能档位 low/medium/high；默认 medium。low 使用四分之一核心并保留 45 FPS 保险丝，medium 使用一半核心并保留 30 FPS 保险丝，high 沿用旧版全核心配置且不自动降载。距离、细节等画质参数与档位无关。");
-        help.put("enablePrediction", "是否根据服务端同步的种子和世界生成元数据在远处生成预测地形；默认 true。");
+        help.put("enablePrediction", "是否根据服务端同步的种子和世界生成元数据在远处生成预测地形；默认 false（预测只是近似，需自行开启）。");
         help.put("predictionDistanceBlocks", "预测远景范围，单位方块；默认 4096；范围 "
                 + MIN_PREDICTION_DISTANCE_BLOCKS + "-" + MAX_PREDICTION_DISTANCE_BLOCKS
                 + "。它独立于 VSS 的 lodDistanceChunks。");
@@ -100,6 +104,9 @@ public class VSSClientConfig extends JsonConfig {
     protected void validate() {
         if (!CURRENT_CONFIG_VERSION.equals(configVersion)) {
             enableXaeroMapBridge = true;
+            // Prediction became opt-in: an update must not keep rendering
+            // predicted terrain for players who never asked for it.
+            enablePrediction = false;
         }
         configVersion = CURRENT_CONFIG_VERSION;
         lodDistanceChunks = clamp(lodDistanceChunks, 0, MAX_LOD_DISTANCE_CHUNKS);
