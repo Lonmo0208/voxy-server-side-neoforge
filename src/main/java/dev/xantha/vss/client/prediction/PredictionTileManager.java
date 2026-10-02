@@ -85,6 +85,8 @@ public final class PredictionTileManager implements AutoCloseable {
                     .mapToObj(i -> new java.util.concurrent.atomic.LongAdder())
                     .toArray(java.util.concurrent.atomic.LongAdder[]::new);
     private final java.util.concurrent.atomic.LongAdder nativeSampleNanos = new java.util.concurrent.atomic.LongAdder();
+    /** Void-facing columns whose underside was measured; zero in dimensions without void. */
+    private final java.util.concurrent.atomic.LongAdder voidEdgeProbeCount = new java.util.concurrent.atomic.LongAdder();
     private final java.util.concurrent.atomic.LongAdder colorNanos = new java.util.concurrent.atomic.LongAdder();
     private final java.util.concurrent.atomic.LongAdder colorResolveNanos = new java.util.concurrent.atomic.LongAdder();
     private final java.util.concurrent.atomic.LongAdder colorTintNanos = new java.util.concurrent.atomic.LongAdder();
@@ -1028,7 +1030,7 @@ public final class PredictionTileManager implements AutoCloseable {
                 + ",surfaceQuotaDeferrals=" + surfaceQuotaDeferrals.sum()
                 + ",biomeCache={" + sampler.decorationContext().biomeCacheDiagnostics() + "}"
                 + ",simpleVegetation={" + simpleVegetation.diagnostics() + "}"
-                + ",wallEvidence={mode=capturedOnly}"
+                + ",wallEvidence={mode=capturedOnly,voidEdgeProbes=" + voidEdgeProbeCount.sum() + "}"
                 + ",stageTotalMs={sample=" + samplingNanos.sum() / 1_000_000
                 + ",surface=" + decorationNanos.sum() / 1_000_000
                 + ",mesh=" + meshingNanos.sum() / 1_000_000
@@ -1894,6 +1896,15 @@ public final class PredictionTileManager implements AutoCloseable {
                         colorTintNanos.add(System.nanoTime() - tintStarted);
                     }
                 }
+                // Columns that face void need a measured underside before the
+                // walls are built. The sample cache keeps it so neighbouring
+                // tiles and seam meshes see the same evidence.
+                int voidEdgeProbes = PredictionVoidEdges.enrich(samples, gridSize, stepBlocks,
+                        baseBlockX, baseBlockZ, sampler, () -> !closed && !paused
+                                && revision == meshRevision.get() && effectivelyDesired(key)
+                                && captureEpoch == captureEpochs.getOrDefault(key, 0L),
+                        (blockX, blockZ, sample) -> sampleCache.put(pack(blockX, blockZ), sample));
+                voidEdgeProbeCount.add(voidEdgeProbes);
                 int exteriorUpdates = PredictionExteriorColumns.enrich(samples, gridSize, stepBlocks,
                         baseBlockX, baseBlockZ, sampler, () -> !closed && !paused
                                 && revision == meshRevision.get() && effectivelyDesired(key)
@@ -1904,7 +1915,8 @@ public final class PredictionTileManager implements AutoCloseable {
                 colorNanos.add(System.nanoTime() - colorStartedNanos);
                 if (captureEpoch != captureEpochs.getOrDefault(key, 0L)) { captureEarlyExits.increment(); return; }
                 long commitStartedNanos = System.nanoTime();
-                boolean stored = diskLease != null && (diskHit && exteriorUpdates == 0 && (cachedColors || colorFingerprint == Long.MIN_VALUE)
+                boolean stored = diskLease != null && (diskHit && exteriorUpdates == 0 && voidEdgeProbes == 0
+                        && (cachedColors || colorFingerprint == Long.MIN_VALUE)
                         || diskCache.writeTerrain(diskLease, new PredictionDiskCache.TerrainData(
                                 samples, colorFingerprint, surfaceTints, foliageColors, waterTints)));
                 commitNanos.add(System.nanoTime() - commitStartedNanos);

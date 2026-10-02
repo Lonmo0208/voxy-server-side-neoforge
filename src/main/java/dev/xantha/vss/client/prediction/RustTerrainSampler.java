@@ -439,6 +439,26 @@ final class RustTerrainSampler extends ClientTerrainSampler implements AutoClose
             return !state.isAir() && state.getFluidState().isEmpty();
         });
     }
+    /**
+     * The native column query returns the real block states of the whole
+     * column, so the underside of the mass under the sampled surface is exact
+     * here instead of a density march. Older libraries or a rejected snapshot
+     * leave the column unmeasured, which keeps its connecting wall closed.
+     */
+    @Override int undersideY(int x, int z, int surfaceY) {
+        if (cancelled || world == 0 || surfaceY <= profile().minY()) return ClientColumnSample.NO_SPAN;
+        final PredictionColumnVolume column;
+        try {
+            column = exteriorColumn(x, z);
+        } catch (RuntimeException unavailable) {
+            return ClientColumnSample.NO_SPAN;
+        }
+        int y = surfaceY - 1;
+        for (int i = 0; i < column.size(); i++) {
+            if (y >= column.bottom(i) && y < column.top(i)) return column.bottom(i);
+        }
+        return ClientColumnSample.NO_SPAN;
+    }
     @Override public ClientColumnSample sampleForLod(int x, int z, int step) { return sample(x, z); }
     // Sparse points compute full-height density and surface neighbours. Publish
     // initial horizon coverage before paying for a complete 4,356-point grid.

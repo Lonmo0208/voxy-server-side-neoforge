@@ -487,7 +487,8 @@ public final class PredictionMeshBuilder {
         if (x < 0 || z < 0 || x >= gridSize || z >= gridSize || height == Integer.MIN_VALUE) {
             return;
         }
-        if (!samples[index(x, z, gridSize)].hasSurface()) return;
+        ClientColumnSample sample = samples[index(x, z, gridSize)];
+        if (!sample.hasSurface()) return;
         float[] up = {0.0F, 1.0F, 0.0F};
         int x0 = x * step;
         int z0 = z * step;
@@ -538,6 +539,17 @@ public final class PredictionMeshBuilder {
         emitColumnWall(out, samples, heights, x, z, step, gridSize, height, color, seaLevel, -1, 0);
         emitColumnWall(out, samples, heights, x, z, step, gridSize, height, color, seaLevel, 0, 1);
         emitColumnWall(out, samples, heights, x, z, step, gridSize, height, color, seaLevel, 0, -1);
+        // A measured void-facing underside closes the cell from below: the
+        // walls stop at the mass bottom, so without this face an island would
+        // be open to anything looking up at it. Only confirmed void gets the
+        // face, and columns with an interior already draw both of their caps.
+        if (sample.confirmedUnderside() && !PredictionWallEvidence.hasInterior(sample, step)) {
+            int deepBlock = PredictionMaterialPalette.wallDeepBlock(sample);
+            int base = PredictionMaterialPalette.colorForIndex(deepBlock, 0xFF888888);
+            int underside = packSprite(PredictionLighting.shade(base, sample.surfaceBottom(),
+                    seaLevel, true, false), VssLodSpriteTable.indexForBlock(deepBlock));
+            addFeatureBottom(out, x0, z0, sample.surfaceBottom(), step, step, underside);
+        }
     }
 
     /**

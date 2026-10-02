@@ -47,6 +47,13 @@ public record ClientColumnSample(
     public static final int FLAG_APPROXIMATE = 1 << 27;
     /** Interpolated-density display surface, distinct from the raw first preview. */
     public static final int FLAG_DISPLAY = 1 << 26;
+    /**
+     * The column faces void and its mass bottom was measured against the real
+     * density (or native block states), so confirmed air sits below it. Coarse
+     * or legacy records never set this: unverified spans must not change
+     * geometry.
+     */
+    public static final int FLAG_CONFIRMED_UNDERSIDE = 1 << 3;
     public static final int PREFILLED = 0xFF;
 
     public boolean hasFluid() {
@@ -74,6 +81,11 @@ public record ClientColumnSample(
 
     public boolean floating() {
         return surfaceBottom != NO_SPAN;
+    }
+
+    /** Confirmed air below the measured mass bottom: only then may it bound geometry. */
+    public boolean confirmedUnderside() {
+        return (flags & FLAG_CONFIRMED_UNDERSIDE) != 0 && floating();
     }
 
     public boolean snow() {

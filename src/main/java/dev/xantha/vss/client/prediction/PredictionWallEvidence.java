@@ -31,6 +31,21 @@ final class PredictionWallEvidence {
         return spacing == 1 && hasInterior(s);
     }
 
+    /**
+     * A mass bottom measured on real data, which may bound the wall's own
+     * bottom but never cuts holes. Two sources qualify: the void-edge probe,
+     * and a classified capture. Columns that also captured a lower mass are
+     * excluded: their wall carries a real hole and has to stay closed, because
+     * bounding it at the roof would erase the rock below. Unverified and legacy
+     * spans stay out as well.
+     */
+    static boolean measuredUnderside(ClientColumnSample s) {
+        if (s == null || !s.floating() || s.hasLowerSpan() || s.surfaceBottom() >= s.surfaceY()) return false;
+        if (s.confirmedUnderside()) return true;
+        return s.captured()
+                && (s.flags() & (CHECKED | CAPTURED_OCCUPANCY)) == (CHECKED | CAPTURED_OCCUPANCY);
+    }
+
     static ClientColumnSample inspect(ClientColumnSample s, int minY, IntPredicate solid) {
         return inspect(s, minY, solid, s.flags() & ~CAPTURED_OCCUPANCY);
     }
@@ -42,10 +57,13 @@ final class PredictionWallEvidence {
 
     private static ClientColumnSample inspect(ClientColumnSample s, int minY, IntPredicate solid, int flags) {
         int y = s.surfaceY() - 1;
-        int roofBottom = s.surfaceY();
+        // Only confirmed air below the roof is an underside. A walk that ran
+        // into the dimension floor, or a surface block that is not solid at
+        // all, records no bottom so the closed heightfield stays in charge.
+        int roofBottom = ClientColumnSample.NO_SPAN;
         if (y >= minY && solid.test(y)) {
             while (y >= minY && solid.test(y)) y--;
-            roofBottom = y + 1;
+            if (y >= minY) roofBottom = y + 1;
         }
         while (y >= minY && !solid.test(y)) y--;
         int lowerTop = y >= minY ? y + 1 : ClientColumnSample.NO_SPAN;
@@ -73,7 +91,11 @@ final class PredictionWallEvidence {
         } else {
             // Coarse LODs have no occupancy probes. Keep their heightfield
             // closed until actual evidence can replace this approximation.
-            add(result, bottom, top);
+            // A measured mass bottom is such evidence and only bounds the
+            // wall's own bottom: confirmed air below the mass is never painted
+            // over, while unverified spans and the stratum gaps inside the wall
+            // keep the closed heightfield.
+            add(result, measuredUnderside(s) ? Math.max(bottom, s.surfaceBottom()) : bottom, top);
         }
         return result;
     }

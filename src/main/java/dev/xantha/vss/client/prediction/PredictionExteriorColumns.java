@@ -39,12 +39,20 @@ final class PredictionExteriorColumns {
         floor = Math.max(minY, Math.min(floor, s.surfaceY() - 1));
         final int bottom = floor;
         int block = PredictionMaterialPalette.wallDeepBlock(s);
+        // Everything below the requested range is assumed solid, which is only
+        // safe while no measurement contradicts it. A void-facing column whose
+        // underside was probed proves that region is open air, so the assumed
+        // fill would otherwise paint sky across the void.
+        final int measuredAirBelow = s.confirmedUnderside() ? Math.max(minY, s.surfaceBottom()) : minY;
         var volume = PredictionColumnVolume.sample(minY, s.surfaceY() - minY,
-                y -> y < bottom || occupied.test(y) ? block : -1, ignored -> 0);
+                y -> y < bottom
+                        ? (y < measuredAirBelow ? -1 : block)
+                        : occupied.test(y) ? block : -1,
+                ignored -> 0);
         // Preserve the sampled roof: an incompatible generator must not turn it into a floating plate.
         if (!volume.occupied(s.surfaceY() - 1, false)) return s;
         boolean gap = false;
-        int cursor = floor;
+        int cursor = minY;
         for (int i = 0; i < volume.size(); i++) {
             if (volume.bottom(i) > cursor) gap = true;
             cursor = Math.max(cursor, volume.top(i));

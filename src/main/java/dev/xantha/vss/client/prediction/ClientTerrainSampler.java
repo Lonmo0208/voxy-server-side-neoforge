@@ -362,6 +362,20 @@ public class ClientTerrainSampler {
         });
     }
 
+    /**
+     * Lowest solid block of the mass below the sampled surface, or NO_SPAN when
+     * only the world floor confirms solidity. Columns that face void need this:
+     * their connecting wall has no neighbour to hide against, and confirmed air
+     * must not be painted over.
+     */
+    int undersideY(int blockX, int blockZ, int surfaceY) {
+        // A custom generator replaces the router (BetterEnd's PAULEVS, opaque
+        // backends), so its density is not that terrain and cannot be probed.
+        if (customSurface != null || finalDensity == null) return ClientColumnSample.NO_SPAN;
+        if (surfaceY <= floorY) return ClientColumnSample.NO_SPAN;
+        return PredictionColumnProbe.underside(surfaceY, floorY, y -> solid(blockX, y, blockZ));
+    }
+
     String biomeCacheDiagnostics() {
         return biomeCache == null ? "unavailable" : biomeCache.diagnostics();
     }
@@ -535,6 +549,13 @@ public class ClientTerrainSampler {
         // Native/custom samplers override sample and must keep that backend.
         if (generator == null || biomeSource == null || climate == null) return sample(blockX, blockZ);
         int surface = surfaceY(blockX, blockZ);
+        if (surface <= floorY) {
+            // No solid anywhere in the column: void terrain (the End's sky, a
+            // floating dimension). Treating it as a surface would paint a floor
+            // plane across open space, so it reports no surface at all.
+            return basicSample(surface, ClientColumnSample.NO_BLOCK, surface, 0,
+                    PredictionMaterialPalette.stoneIndex(), ClientColumnSample.FLAG_NO_SURFACE);
+        }
         boolean submerged = surface < seaLevel;
         int fluidKind = submerged ? (lavaOcean ? 2 : 1) : 0;
         int fluidY = submerged ? seaLevel : surface;
